@@ -1,11 +1,15 @@
 import { Text, View, TouchableOpacity, useWindowDimensions } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect,useRef } from "react";
 import MapComponent from "./map";
 import SideBar from "./sidebar";
 
 export default function EntryComponent() {
   const [isSidebarVisible, setSidebarVisible] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
+  const mapRef = useRef(null);
+  const [markers, setMarkers] = useState([]);
+  const [isResultVisible,setIsResultVisible] = useState(false)
+  const [totalQueries,setTotalQueries] = useState('')
   
   // Determine if we're on mobile based on screen width
   const isMobile = screenWidth < 768; // Standard tablet breakpoint
@@ -50,7 +54,7 @@ export default function EntryComponent() {
               <Text className="text-xl font-bold">×</Text>
             </TouchableOpacity>
           </View>
-          <SideBar />
+          <SideBar mapRef={mapRef} setIsResultVisible ={setIsResultVisible} setTotalQueries = {setTotalQueries} setMarkers ={setMarkers}/>
         </View>
       )}
 
@@ -60,7 +64,7 @@ export default function EntryComponent() {
           isSidebarVisible && !isMobile ? 'w-3/4' : 'w-full'
         }`}
       >
-        <MapComponent />
+        <MapComponent markers = {markers} setIsResultVisible ={setIsResultVisible} setTotalQueries = {setTotalQueries} setMarkers ={setMarkers} isResultVisible = {isResultVisible} totalQueries ={totalQueries} mapRef = {mapRef}/>
         
         {/* Menu Button - Only visible when sidebar is closed */}
         {!isSidebarVisible && (

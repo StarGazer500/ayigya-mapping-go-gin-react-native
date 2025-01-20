@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
-import { FetchFeatureLayers, GetAttributeNames,SetOperations } from './fetch_modules';
+import { FetchFeatureLayers, GetAttributeNames,SetOperations,PrepareAllData,getAllData,getDataByFeatureLayer,getDataByFeatureLayerAndAtrribute,getDataBySpecificValue } from './fetch_modules';
 
-export default function SideBar() {
+export default function SideBar({mapRef,setMarkers,setTotalQueries,setIsResultVisible }) {
   // State for selected values
-  const [selectedFeature, setSelectedFeature] = useState('');
-  const [selectedAttribute, setSelectedAttribute] = useState('');
-  const [selectedOperator, setSelectedOperator] = useState('');
+  const [selectedFeature, setSelectedFeature] = useState('All Feature Layers');
+  const [selectedAttribute, setSelectedAttribute] = useState('None');
+  const [selectedOperator, setSelectedOperator] = useState('None');
   const [queryValue, setQueryValue] = useState('');
   const [featureLayers, setFeatureLayers] = useState(['All Feature Layers']);
   const [attributeLayers, setAttributeLayers] = useState(['None']);
   const [operatorLayers, setOperatorLayers] = useState(['None']);
 
-  const serverbaseurl = 'http://192.168.122.214:8080';
+  const serverbaseurl = 'http://192.168.126.214:8080';
 
   // State for dropdown visibility
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -31,7 +31,8 @@ export default function SideBar() {
         className="border border-gray-300 rounded-md p-2 bg-white"
       >
         <Text className="text-gray-800">
-          {selectedValue || `${options[0]}`}
+          {selectedValue}
+
         </Text>
       </TouchableOpacity>
 
@@ -78,7 +79,7 @@ export default function SideBar() {
 
   // Fetch attribute layers based on selected feature
   useEffect(() => {
-    if (selectedFeature !== '') {
+    if (selectedFeature !== 'All Feature Layers') {
       async function fetchAttributes() {
         // Clear previous attributes before fetching new ones
         setAttributeLayers(['None']);
@@ -90,7 +91,7 @@ export default function SideBar() {
   }, [selectedFeature]); // Runs when selectedFeature changes
 
   useEffect(() => {
-    if (selectedAttribute !== '') {
+    if (selectedAttribute !== 'None') {
       async function fetchOperators() {
         // Clear previous attributes before fetching new ones
         setOperatorLayers(['None']);
@@ -101,14 +102,60 @@ export default function SideBar() {
     }
   }, [selectedAttribute]); // Runs when selectedFeature changes
 
-  const handleSubmit = () => {
-    console.log("Selected Feature:", selectedFeature);
-    console.log("Selected Attribute:", selectedAttribute);
-    console.log("Selected Operator:", selectedOperator);
-    console.log("Query Value:", queryValue);
-    // You can perform other actions here, such as sending the data to a server.
-  };
-  // SetOperations(attribute,selectedFeatureLayer,baseurl)
+  const handleSubmit =  async() => {
+    if (selectedFeature==='All Feature Layers' ){
+      if (selectedAttribute ==='None' && selectedOperator==='None' && queryValue===''){
+        const backenddata = await getAllData("searchallfeaturelayersdata",serverbaseurl)
+        const {markers,totalQueries} = await PrepareAllData(mapRef,backenddata)
+        setTotalQueries(`${totalQueries} total results obtained`)
+        setMarkers(markers)
+       setIsResultVisible (true)
+      }else{
+        console.log("Selecting All Feature Layers requres other entries to be empty")
+      }
+    }
+    else if(selectedFeature!=='All Feature Layers'){
+        if (selectedAttribute ==='None' && selectedOperator==='None' && queryValue===''){
+          const backenddata = await getDataByFeatureLayer("searchbyfeaturelayer",serverbaseurl,selectedFeature)
+          const {markers,totalQueries} = await PrepareAllData(mapRef,backenddata)
+          setTotalQueries(`${totalQueries} total results obtained`)
+          setMarkers(markers)
+          setIsResultVisible (true)
+         
+          // console.log("seach for a specific layer")
+        }else if (selectedAttribute !=='None' && selectedOperator==='None' && queryValue===''){
+          const backenddata = await getDataByFeatureLayerAndAtrribute("searchbycolumn",serverbaseurl,selectedFeature,selectedAttribute)
+          const {markers,totalQueries} = await PrepareAllData(mapRef,backenddata)
+          setTotalQueries(`${totalQueries} total results obtained`)
+          setMarkers(markers)
+          setIsResultVisible (true)
+          // console.log("search for a specific attribute in layer")
+        } else if( selectedAttribute !=='None' && selectedOperator!=='None' && queryValue!==''){
+          const backenddata = await getDataBySpecificValue("makeqquery",serverbaseurl,selectedFeature,selectedAttribute,selectedOperator,queryValue)
+          const {markers,totalQueries} = await PrepareAllData(mapRef,backenddata)
+          setTotalQueries(`${totalQueries} total results obtained`)
+          setMarkers(markers)
+          setIsResultVisible (true)
+        // Handling Unaccepted queries
+        }else if (selectedAttribute !=='None' && selectedOperator!=='None' && queryValue===''){
+          console.log("The selected parameters require you to enter search value")
+        }else if (selectedAttribute !=='None' && selectedOperator!=='None' && queryValue===''){
+          console.log("The selected parameters require you to enter search value")
+        }else if (selectedAttribute !=='None' && selectedOperator==='None' && queryValue!==''){
+          console.log("The selected parameters require you to choose an operation type")
+        }else if (selectedAttribute ==='None' && selectedOperator!=='None' && queryValue!==''){
+          console.log("The selected parameters require you to choose an attribute")
+        }else{
+          console.log("unhandled query Your parameters may be wrong, correct them")
+        }
+      
+    }else{
+      console.log("Something went wrong")
+    }
+   
+  }
+
+  
 
   return (
     <View className="p-4 relative">
@@ -136,28 +183,15 @@ export default function SideBar() {
         setSelectedOperator
       )}
 
-      
-      <TextInput style={styles.input} placeholder="Enter Query Value" />
+      <TextInput style={styles.input} value={queryValue} onChangeText={(text) => setQueryValue(text)} placeholder="Enter Query Value" />
       <TouchableOpacity onPress={handleSubmit} style={styles.button}>
         <Text style={styles.buttonText}>Submit</Text>
       </TouchableOpacity>
+    
     </View>
   );
 }
 
-// const styles = StyleSheet.create({
-//   container: {
-//     flexDirection: 'column', // Align children (TextInput) in a column
-//     padding: 20, // Optional padding around the container
-//   },
-//   input: {
-//     height: 40, // Height of the input field
-//     borderColor: 'gray', // Border color
-//     borderWidth: 1, // Border width
-//     marginBottom: 10, // Space between inputs
-//     paddingLeft: 10, // Padding inside the input
-//   },
-// });
 
 
 const styles = StyleSheet.create({
@@ -184,4 +218,5 @@ const styles = StyleSheet.create({
     fontSize: 16, // Font size of the button text
     fontWeight: 'bold', // Bold text
   },
+ 
 });
